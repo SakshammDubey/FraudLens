@@ -1,0 +1,6 @@
+data/raw/
+data/audit/transaction_missingness.csv
+data/fraudlens_users.sqlite3
+.venv
+.env
+

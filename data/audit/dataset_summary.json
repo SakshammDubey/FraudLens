@@ -1,0 +1,22 @@
+{
+    "dataset": "IEEE-CIS Fraud Detection",
+    "transaction_file": "train_transaction.csv",
+    "identity_file": "train_identity.csv",
+    "transaction_rows": 590540,
+    "transaction_columns": 394,
+    "identity_rows": 144233,
+    "unique_transaction_ids": 590540,
+    "duplicate_transaction_ids": 0,
+    "identity_duplicate_ids": 0,
+    "fraud_count": 20663,
+    "legitimate_count": 569877,
+    "missing_target_count": 0,
+    "fraud_percentage": 3.499,
+    "legitimate_percentage": 96.501,
+    "matched_transaction_rows": 144233,
+    "identity_coverage_percentage": 24.42,
+    "transaction_dt_min": 86400,
+    "transaction_dt_max": 15811131,
+    "transaction_dt_globally_ordered": true,
+    "chunk_size": 50000
+}
