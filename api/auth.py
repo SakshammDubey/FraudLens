@@ -1,51 +1,35 @@
 
 from __future__ import annotations
 
-import base64
-import hashlib
-import hmac
+import logging
 import os
-import secrets
-import sqlite3
-import time
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
+from supabase import create_client
+from supabase_auth.errors import AuthApiError
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "data" / "fraudlens_users.sqlite3"
-SECRET_KEY = os.getenv("FRAUDLENS_SECRET_KEY", "")
-TOKEN_TTL_SECONDS = 60 * 60 * 12
+load_dotenv(ROOT / ".env")
+
+logger = logging.getLogger("fraudlens.auth")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "SUPABASE_URL and SUPABASE_KEY must be set in the project .env file."
+    )
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 bearer = HTTPBearer(auto_error=False)
-
-
-def _connect() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
-    return connection
-
-
-def _init_db() -> None:
-    with _connect() as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at INTEGER NOT NULL
-            )
-            """
-        )
-
-
-_init_db()
 
 
 class RegisterRequest(BaseModel):
@@ -58,202 +42,143 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
-def _password_hash(
-    password: str,
-    salt: bytes | None = None,
-) -> str:
-    salt = salt or secrets.token_bytes(16)
+def _auth_error(exc: AuthApiError) -> HTTPException:
+    message = str(exc).lower()
 
-    derived = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt,
-        310_000,
+    logger.warning("Supabase Auth API error: %s", str(exc))
+
+    if "already registered" in message or "already been registered" in message:
+        return HTTPException(409, "An account with this email may already exist.")
+
+    if "invalid login credentials" in message:
+        return HTTPException(401, "Incorrect email or password.")
+
+    if "email not confirmed" in message:
+        return HTTPException(401, "Confirm your email address before signing in.")
+
+    if "password should be" in message or "weak password" in message:
+        return HTTPException(400, "Choose a stronger password.")
+
+    if "rate limit" in message or "too many requests" in message:
+        return HTTPException(429, "Too many attempts. Please try again later.")
+
+    # The detailed reason is written to the backend terminal.
+    return HTTPException(
+        status_code=400,
+        detail="Supabase rejected the authentication request. Check the backend terminal for the diagnostic error.",
     )
-
-    return f"{salt.hex()}${derived.hex()}"
-
-
-def _verify_password(password: str, stored: str) -> bool:
-    try:
-        salt_hex, _ = stored.split("$", 1)
-        salt = bytes.fromhex(salt_hex)
-
-        candidate = _password_hash(password, salt)
-
-        return hmac.compare_digest(candidate, stored)
-
-    except (ValueError, TypeError):
-        return False
-
-
-def _sign(payload: str) -> str:
-    if not SECRET_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Authentication is not configured. "
-                "Set FRAUDLENS_SECRET_KEY and restart the API."
-            ),
-        )
-
-    body = (
-        base64.urlsafe_b64encode(payload.encode())
-        .decode()
-        .rstrip("=")
-    )
-
-    signature = hmac.new(
-        SECRET_KEY.encode(),
-        body.encode(),
-        hashlib.sha256,
-    ).hexdigest()
-
-    return f"{body}.{signature}"
-
-
-def _make_token(user_id: int, email: str) -> str:
-    expires = int(time.time()) + TOKEN_TTL_SECONDS
-    return _sign(f"{user_id}|{expires}|{email}")
-
-
-def _decode_token(token: str) -> dict[str, Any]:
-    try:
-        body, signature = token.rsplit(".", 1)
-
-        expected = hmac.new(
-            SECRET_KEY.encode(),
-            body.encode(),
-            hashlib.sha256,
-        ).hexdigest()
-
-        if not SECRET_KEY or not hmac.compare_digest(
-            signature,
-            expected,
-        ):
-            raise ValueError("Invalid signature")
-
-        padded = body + "=" * (-len(body) % 4)
-
-        decoded = base64.urlsafe_b64decode(
-            padded.encode()
-        ).decode()
-
-        user_id, expires, email = decoded.split("|", 2)
-
-        if int(expires) < int(time.time()):
-            raise ValueError("Expired token")
-
-        return {
-            "id": int(user_id),
-            "email": email,
-        }
-
-    except (ValueError, TypeError, UnicodeDecodeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired session",
-        ) from None
-
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(
-        bearer
-    ),
-) -> dict[str, Any]:
-    if credentials is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Sign in to access this resource",
-        )
-
-    if credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=401,
-            detail="A bearer token is required",
-        )
-
-    return _decode_token(credentials.credentials)
 
 
 @router.post("/register")
-def register(body: RegisterRequest):
+def register(body: RegisterRequest) -> dict[str, Any]:
     email = str(body.email).lower().strip()
 
-    with _connect() as connection:
-        existing = connection.execute(
-            "SELECT id FROM users WHERE email = ?",
-            (email,),
-        ).fetchone()
-
-        if existing:
-            raise HTTPException(
-                status_code=409,
-                detail="An account with this email already exists",
-            )
-
-        cursor = connection.execute(
-            """
-            INSERT INTO users(email, password_hash, created_at)
-            VALUES (?, ?, ?)
-            """,
-            (
-                email,
-                _password_hash(body.password),
-                int(time.time()),
-            ),
+    try:
+        response = supabase.auth.sign_up(
+            {"email": email, "password": body.password}
         )
+    except AuthApiError as exc:
+        raise _auth_error(exc) from None
+    except Exception as exc:
+        logger.exception("Unexpected error during Supabase registration")
+        raise HTTPException(
+            status_code=502,
+            detail="Could not contact Supabase. Check the backend terminal.",
+        ) from None
 
-        user_id = int(cursor.lastrowid)
+    user = response.user
+    session = response.session
+
+    if user is None:
+        raise HTTPException(502, "Supabase did not return a user record.")
+
+    user_data = {
+        "id": str(user.id),
+        "email": user.email or email,
+    }
+
+    if session is None:
+        return {
+            "confirmation_required": True,
+            "message": (
+                "Registration received. Check your email to confirm "
+                "your account before signing in."
+            ),
+            "user": user_data,
+        }
 
     return {
-        "access_token": _make_token(user_id, email),
+        "confirmation_required": False,
+        "access_token": session.access_token,
         "token_type": "bearer",
-        "user": {
-            "id": user_id,
-            "email": email,
-        },
+        "user": user_data,
     }
 
 
 @router.post("/login")
-def login(body: LoginRequest):
+def login(body: LoginRequest) -> dict[str, Any]:
     email = str(body.email).lower().strip()
 
-    with _connect() as connection:
-        user = connection.execute(
-            """
-            SELECT id, email, password_hash
-            FROM users
-            WHERE email = ?
-            """,
-            (email,),
-        ).fetchone()
+    try:
+        response = supabase.auth.sign_in_with_password(
+            {"email": email, "password": body.password}
+        )
+    except AuthApiError as exc:
+        raise _auth_error(exc) from None
+    except Exception:
+        logger.exception("Unexpected error during Supabase login")
+        raise HTTPException(
+            status_code=502,
+            detail="Could not contact Supabase. Check the backend terminal.",
+        ) from None
 
-    if user is None or not _verify_password(
-        body.password,
-        user["password_hash"],
-    ):
+    user = response.user
+    session = response.session
+
+    if user is None or session is None:
         raise HTTPException(
             status_code=401,
-            detail="Incorrect email or password",
+            detail="No active session returned. Confirm your email and try again.",
         )
 
-    user_id = int(user["id"])
-
     return {
-        "access_token": _make_token(
-            user_id,
-            user["email"],
-        ),
+        "access_token": session.access_token,
         "token_type": "bearer",
-        "user": {
-            "id": user_id,
-            "email": user["email"],
-        },
+        "user": {"id": str(user.id), "email": user.email or email},
     }
 
 
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> dict[str, Any]:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign in to access this resource.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        response = supabase.auth.get_user(credentials.credentials)
+        user = response.user
+    except Exception:
+        logger.warning("Supabase rejected or could not verify the access token.")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired session. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+
+    if user is None or not user.email:
+        raise HTTPException(
+            status_code=401,
+            detail="Unable to verify the signed-in user.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"id": str(user.id), "email": user.email}
+
+
 @router.get("/me")
-def me(user: dict = Depends(get_current_user)):
+def me(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     return {"user": user}

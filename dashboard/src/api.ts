@@ -85,19 +85,37 @@ export interface Investigation extends Transaction {
   }
 }
 
+export interface AuthUser {
+  id: string
+  email: string
+}
+
 export interface AuthResponse {
-  access_token: string
-  token_type: string
-  user: {
-    id: number
-    email: string
+  access_token?: string
+  token_type?: string
+  user: AuthUser
+  confirmation_required?: boolean
+  message?: string
+}
+
+export interface RegistrationResult {
+  confirmationRequired: boolean
+  message: string
+  user: AuthUser
+}
+
+function saveSessionIfPresent(result: AuthResponse): void {
+  if (result.access_token) {
+    saveToken(result.access_token)
+  } else {
+    clearToken()
   }
 }
 
 export async function register(
   email: string,
   password: string,
-) {
+): Promise<RegistrationResult> {
   const result = await request<AuthResponse>(
     '/auth/register',
     {
@@ -106,14 +124,19 @@ export async function register(
     },
   )
 
-  saveToken(result.access_token)
-  return result.user
+  saveSessionIfPresent(result)
+
+  return {
+    confirmationRequired: result.confirmation_required ?? false,
+    message: result.message ?? 'Registration completed.',
+    user: result.user,
+  }
 }
 
 export async function login(
   email: string,
   password: string,
-) {
+): Promise<AuthUser> {
   const result = await request<AuthResponse>(
     '/auth/login',
     {
@@ -122,14 +145,20 @@ export async function login(
     },
   )
 
+  if (!result.access_token) {
+    throw new Error('No active session was returned. Confirm your email and try again.')
+  }
+
   saveToken(result.access_token)
   return result.user
 }
 
-export async function currentUser() {
-  const result = await request<{
-    user: { id: number; email: string }
-  }>('/auth/me', {}, true)
+export async function currentUser(): Promise<AuthUser> {
+  const result = await request<{ user: AuthUser }>(
+    '/auth/me',
+    {},
+    true,
+  )
 
   return result.user
 }

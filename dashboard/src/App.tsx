@@ -37,13 +37,11 @@ import {
   register,
   type Investigation,
   type Transaction,
+  type AuthUser,
 } from './api'
 import './index.css'
 
-type User = {
-  id: number
-  email: string
-}
+type User = AuthUser
 
 type Page = 'overview' | 'transactions' | 'investigations'
 type AuthMode = 'login' | 'register'
@@ -79,17 +77,14 @@ function Orb() {
       <div className="orb-ring orb-ring-one" />
       <div className="orb-ring orb-ring-two" />
       <div className="orb-ring orb-ring-three" />
-
       <div className="orb-core">
         <div className="orb-shine" />
         <div className="orb-grid" />
         <div className="orb-continent" />
       </div>
-
       <i className="orb-node node-one" />
       <i className="orb-node node-two" />
       <i className="orb-node node-three" />
-
       <div className="orb-caption">
         <span className="status-dot" />
         RISK SIGNALS / MODEL INFERENCE
@@ -98,11 +93,7 @@ function Orb() {
   )
 }
 
-function RiskChip({
-  tx,
-}: {
-  tx: Pick<Transaction, 'prediction' | 'risk_score'>
-}) {
+function RiskChip({ tx }: { tx: Pick<Transaction, 'prediction' | 'risk_score'> }) {
   const high = tx.prediction === 'fraud'
 
   return (
@@ -113,16 +104,9 @@ function RiskChip({
   )
 }
 
-/* -------------------------------------------------------
-   PUBLIC LANDING PAGE
-   No transaction feed is loaded or displayed here.
-------------------------------------------------------- */
+/* PUBLIC LANDING PAGE */
 
-function Landing({
-  onAuth,
-}: {
-  onAuth: (mode: AuthMode) => void
-}) {
+function Landing({ onAuth }: { onAuth: (mode: AuthMode) => void }) {
   return (
     <main className="landing">
       <div className="ambient ambient-one" />
@@ -139,13 +123,9 @@ function Landing({
         </nav>
 
         <div className="header-actions">
-          <button
-            className="button button-quiet"
-            onClick={() => onAuth('login')}
-          >
+          <button className="button button-quiet" onClick={() => onAuth('login')}>
             Sign in
           </button>
-
           <button
             className="button button-primary header-action"
             onClick={() => onAuth('register')}
@@ -181,7 +161,6 @@ function Landing({
             >
               Enter the workspace <ArrowRight size={16} />
             </button>
-
             <button
               className="button button-outline button-large"
               onClick={() => onAuth('login')}
@@ -191,75 +170,39 @@ function Landing({
           </div>
 
           <div className="hero-proof">
-            <span>
-              <ShieldCheck size={14} /> Explainable review workflow
-            </span>
-            <span>
-              <Database size={14} /> IEEE-CIS dataset
-            </span>
-            <span>
-              <Fingerprint size={14} /> Protected workspace
-            </span>
+            <span><ShieldCheck size={14} /> Explainable review workflow</span>
+            <span><Database size={14} /> IEEE-CIS dataset</span>
+            <span><Fingerprint size={14} /> Protected workspace</span>
           </div>
         </div>
 
         <div className="hero-visual">
           <Orb />
-
           <div className="floating-stat stat-top">
             <span>INFERENCE ENGINE</span>
-            <strong>
-              <span className="status-dot" /> MODEL ONLINE
-            </strong>
+            <strong><span className="status-dot" /> MODEL ONLINE</strong>
             <small>Baseline classifier · threshold 0.50</small>
           </div>
-
           <div className="floating-stat stat-bottom">
             <span>INVESTIGATION MODE</span>
-            <strong>
-              Risk <span>→</span> Evidence
-            </strong>
+            <strong>Risk <span>→</span> Evidence</strong>
             <small>Score · observations · review status</small>
           </div>
         </div>
       </section>
 
-      {/* Historical dataset and baseline model metrics */}
-      <section
-        className="page-width metrics-strip"
-        aria-label="Dataset and model metrics"
-      >
-        <div>
-          <span>590,540</span>
-          <small>HISTORICAL TRANSACTIONS</small>
-        </div>
-
-        <div>
-          <span>3.50%</span>
-          <small>DATASET FRAUD PREVALENCE</small>
-        </div>
-
-        <div>
-          <span>0.7772</span>
-          <small>BASELINE ROC-AUC</small>
-        </div>
-
-        <div>
-          <span>0.1314</span>
-          <small>BASELINE AVERAGE PRECISION</small>
-        </div>
-
+      <section className="page-width metrics-strip" aria-label="Dataset and model metrics">
+        <div><span>590,540</span><small>HISTORICAL TRANSACTIONS</small></div>
+        <div><span>3.50%</span><small>DATASET FRAUD PREVALENCE</small></div>
+        <div><span>0.7772</span><small>BASELINE ROC-AUC</small></div>
+        <div><span>0.1314</span><small>BASELINE AVERAGE PRECISION</small></div>
         <p>
           Dataset and baseline validation figures. They are not live banking
           statistics or production service-level guarantees.
         </p>
       </section>
 
-      {/* Capabilities section */}
-      <section
-        id="capabilities"
-        className="page-width capabilities"
-      >
+      <section id="capabilities" className="page-width capabilities">
         <div className="section-heading">
           <div>
             <div className="eyebrow">
@@ -268,7 +211,6 @@ function Landing({
             </div>
             <h2>From score to review.</h2>
           </div>
-
           <p>
             One coherent workflow from the first risk signal to a traceable,
             structured investigation view.
@@ -277,9 +219,7 @@ function Landing({
 
         <div className="capability-grid">
           <article className="capability-card">
-            <span>
-              <Gauge size={20} />
-            </span>
+            <span><Gauge size={20} /></span>
             <small>01 / SCORING</small>
             <h3>Risk prioritisation</h3>
             <p>
@@ -290,9 +230,7 @@ function Landing({
           </article>
 
           <article className="capability-card">
-            <span>
-              <Layers3 size={20} />
-            </span>
+            <span><Layers3 size={20} /></span>
             <small>02 / INVESTIGATION</small>
             <h3>Structured evidence</h3>
             <p>
@@ -303,9 +241,7 @@ function Landing({
           </article>
 
           <article className="capability-card">
-            <span>
-              <Shield size={20} />
-            </span>
+            <span><Shield size={20} /></span>
             <small>03 / ACCESS</small>
             <h3>Protected workspace</h3>
             <p>
@@ -317,18 +253,12 @@ function Landing({
         </div>
       </section>
 
-      {/* Separate methodology section */}
-      <section
-        id="methodology"
-        className="page-width methodology-section"
-      >
+      <section id="methodology" className="page-width methodology-section">
         <div className="eyebrow">
           <span className="eyebrow-line" />
           HOW FRAUDLENS WORKS
         </div>
-
         <h2>From transaction to investigation.</h2>
-
         <p className="methodology-intro">
           Historical transaction data is prepared, scored by a baseline
           classifier, and presented for analyst review. Flagged transactions
@@ -339,34 +269,22 @@ function Landing({
           <article>
             <span>01</span>
             <h3>Transaction data</h3>
-            <p>
-              IEEE-CIS historical transaction records provide the input data.
-            </p>
+            <p>IEEE-CIS historical transaction records provide the input data.</p>
           </article>
-
           <article>
             <span>02</span>
             <h3>Model scoring</h3>
-            <p>
-              A baseline classifier assigns a risk score to each transaction.
-            </p>
+            <p>A baseline classifier assigns a risk score to each transaction.</p>
           </article>
-
           <article>
             <span>03</span>
             <h3>Risk review</h3>
-            <p>
-              Threshold-based flags help prioritise transactions for human
-              review.
-            </p>
+            <p>Threshold-based flags help prioritise transactions for human review.</p>
           </article>
-
           <article>
             <span>04</span>
             <h3>Evidence inspection</h3>
-            <p>
-              Inspect transaction attributes and data observations for context.
-            </p>
+            <p>Inspect transaction attributes and data observations for context.</p>
           </article>
         </div>
 
@@ -377,9 +295,7 @@ function Landing({
       </section>
 
       <footer className="page-width site-footer">
-        <span className="brand-mini">
-          <ShieldCheck size={15} /> FraudLens
-        </span>
+        <span className="brand-mini"><ShieldCheck size={15} /> FraudLens</span>
         <span>Academic prototype · historical dataset replay</span>
         <span>Not connected to live financial institutions</span>
       </footer>
@@ -387,9 +303,7 @@ function Landing({
   )
 }
 
-/* -------------------------------------------------------
-   LOGIN AND REGISTRATION
-------------------------------------------------------- */
+/* LOGIN AND REGISTRATION */
 
 function AuthPage({
   initialMode,
@@ -406,28 +320,136 @@ function AuthPage({
   const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmation, setConfirmation] = useState('')
 
   useEffect(() => {
     setMode(initialMode)
+    setError('')
+    setConfirmation('')
   }, [initialMode])
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
+    setConfirmation('')
     setBusy(true)
 
     try {
-      const user =
-        mode === 'register'
-          ? await register(email.trim(), password)
-          : await login(email.trim(), password)
+      if (mode === 'register') {
+        const result = await register(email.trim(), password)
 
+        if (result.confirmationRequired) {
+          setConfirmation(
+            result.message ||
+              `A confirmation email has been requested for ${email.trim()}. Check your inbox and spam folder, then confirm your address before signing in.`,
+          )
+          setPassword('')
+          return
+        }
+
+        // Some Supabase configurations allow registration without email
+        // confirmation. In that case, continue only if a session exists.
+        if (!getToken()) {
+          setConfirmation(
+            'Your registration was received. Check your email for a confirmation link, then return here and sign in.',
+          )
+          setPassword('')
+          return
+        }
+
+        onSuccess(result.user)
+        return
+      }
+
+      const user = await login(email.trim(), password)
       onSuccess(user)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Authentication failed')
     } finally {
       setBusy(false)
     }
+  }
+
+  if (confirmation) {
+    return (
+      <main className="auth-page">
+        <div className="auth-backdrop" />
+
+        <button className="auth-back" onClick={onBack}>
+          <ChevronLeft size={15} /> Back to overview
+        </button>
+
+        <div className="auth-layout">
+          <div className="auth-brand-side">
+            <Brand />
+            <div className="eyebrow" style={{ marginTop: 48 }}>
+              <span className="eyebrow-line" />
+              EMAIL VERIFICATION
+            </div>
+            <h1>
+              One step
+              <br />
+              <span className="accent-word">remaining.</span>
+            </h1>
+            <p>
+              Confirm your email address before accessing the FraudLens
+              analyst workspace.
+            </p>
+            <div className="auth-assurance">
+              <ShieldCheck size={23} />
+              <span>
+                <strong>Protected access</strong>
+                <small>Supabase authentication</small>
+              </span>
+            </div>
+            <Orb />
+          </div>
+
+          <section className="auth-card">
+            <div className="auth-card-top">
+              <span className="brand-mark"><BadgeCheck size={17} /></span>
+              EMAIL CONFIRMATION
+            </div>
+
+            <h2>Check your inbox</h2>
+            <p className="auth-subtitle">
+              Registration has been received for <strong>{email.trim()}</strong>.
+            </p>
+
+            <div className="form-success" role="status">
+              <BadgeCheck size={18} />
+              <span>{confirmation}</span>
+            </div>
+
+            <p className="auth-legal">
+              Open the confirmation link sent by Supabase. Once your email
+              is confirmed, return here and sign in with your email and
+              password. Registration alone does not open the dashboard.
+            </p>
+
+            <button
+              className="button button-primary auth-submit"
+              onClick={() => {
+                setMode('login')
+                setConfirmation('')
+                setError('')
+                setPassword('')
+              }}
+            >
+              Continue to sign in <ArrowRight size={15} />
+            </button>
+
+            <button
+              className="button button-outline auth-submit"
+              onClick={onBack}
+              style={{ marginTop: 10 }}
+            >
+              Back to overview
+            </button>
+          </section>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -462,7 +484,7 @@ function AuthPage({
             <ShieldCheck size={23} />
             <span>
               <strong>Protected access</strong>
-              <small>Token-authenticated API · local prototype</small>
+              <small>Token-authenticated API · Supabase auth</small>
             </span>
           </div>
 
@@ -471,15 +493,11 @@ function AuthPage({
 
         <section className="auth-card">
           <div className="auth-card-top">
-            <span className="brand-mark">
-              <Command size={17} />
-            </span>
+            <span className="brand-mark"><Command size={17} /></span>
             FRAUDLENS ACCESS
           </div>
 
-          <h2>
-            {mode === 'login' ? 'Welcome back' : 'Create your account'}
-          </h2>
+          <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
 
           <p className="auth-subtitle">
             {mode === 'login'
@@ -489,6 +507,7 @@ function AuthPage({
 
           <div className="auth-tabs">
             <button
+              type="button"
               className={mode === 'login' ? 'active' : ''}
               onClick={() => {
                 setMode('login')
@@ -497,8 +516,8 @@ function AuthPage({
             >
               Sign in
             </button>
-
             <button
+              type="button"
               className={mode === 'register' ? 'active' : ''}
               onClick={() => {
                 setMode('register')
@@ -547,17 +566,13 @@ function AuthPage({
                   onClick={() => setShowPassword(value => !value)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? (
-                    <EyeOff size={15} />
-                  ) : (
-                    <Eye size={15} />
-                  )}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </label>
 
             {error && (
-              <div className="form-error">
+              <div className="form-error" role="alert">
                 <CircleAlert size={15} />
                 {error}
               </div>
@@ -573,7 +588,6 @@ function AuthPage({
               ) : (
                 <ArrowRight size={15} />
               )}
-
               {busy
                 ? 'Please wait…'
                 : mode === 'login'
@@ -583,9 +597,8 @@ function AuthPage({
           </form>
 
           <p className="auth-legal">
-            Prototype note: accounts are stored in a local SQLite database
-            on this machine. Use a unique password; this is not a production
-            identity service.
+            Authentication is handled by Supabase. If email confirmation is
+            enabled, confirm your email address before signing in.
           </p>
         </section>
       </div>
@@ -593,9 +606,7 @@ function AuthPage({
   )
 }
 
-/* -------------------------------------------------------
-   TRANSACTION INVESTIGATION MODAL
-------------------------------------------------------- */
+/* TRANSACTION INVESTIGATION MODAL */
 
 function InvestigationModal({
   id,
@@ -616,9 +627,7 @@ function InvestigationModal({
       })
       .catch(e => {
         if (!cancelled) {
-          setError(
-            e instanceof Error ? e.message : 'Investigation failed',
-          )
+          setError(e instanceof Error ? e.message : 'Investigation failed')
         }
       })
 
@@ -657,7 +666,6 @@ function InvestigationModal({
             </div>
             <h2 id="investigation-title">Transaction investigation</h2>
           </div>
-
           <button
             className="icon-button"
             onClick={onClose}
@@ -683,17 +691,12 @@ function InvestigationModal({
               <div className="investigation-score">
                 <div>
                   <span>MODEL RISK SCORE</span>
-                  <strong
-                    className={
-                      detail.risk_score >= 50 ? 'text-alert' : ''
-                    }
-                  >
+                  <strong className={detail.risk_score >= 50 ? 'text-alert' : ''}>
                     {detail.risk_score.toFixed(2)}
                     <small>%</small>
                   </strong>
                   <RiskChip tx={detail} />
                 </div>
-
                 <div className="score-gauge">
                   <span>{detail.risk_score.toFixed(0)}</span>
                   <small>/100</small>
@@ -701,42 +704,23 @@ function InvestigationModal({
               </div>
 
               <div className="investigation-facts">
-                <div>
-                  <span>TRANSACTION ID</span>
-                  <strong>{detail.transaction_id}</strong>
-                </div>
-                <div>
-                  <span>AMOUNT</span>
-                  <strong>{money(detail.amount)}</strong>
-                </div>
-                <div>
-                  <span>PRODUCT</span>
-                  <strong>{detail.product || 'Unknown'}</strong>
-                </div>
-                <div>
-                  <span>DECISION THRESHOLD</span>
-                  <strong>{(detail.threshold * 100).toFixed(0)}%</strong>
-                </div>
+                <div><span>TRANSACTION ID</span><strong>{detail.transaction_id}</strong></div>
+                <div><span>AMOUNT</span><strong>{money(detail.amount)}</strong></div>
+                <div><span>PRODUCT</span><strong>{detail.product || 'Unknown'}</strong></div>
+                <div><span>DECISION THRESHOLD</span><strong>{(detail.threshold * 100).toFixed(0)}%</strong></div>
               </div>
 
               <div className="explanation-block">
-                <h3>
-                  <Sparkles size={15} /> Model interpretation
-                </h3>
+                <h3><Sparkles size={15} /> Model interpretation</h3>
                 <p>{detail.investigation.explanation}</p>
               </div>
 
               <div className="observation-block">
-                <h3>
-                  <Layers3 size={15} /> Data observations
-                </h3>
-
+                <h3><Layers3 size={15} /> Data observations</h3>
                 {detail.investigation.observations.length ? (
                   detail.investigation.observations.map(item => (
                     <div className="observation-row" key={item}>
-                      <span>
-                        <CircleAlert size={12} />
-                      </span>
+                      <span><CircleAlert size={12} /></span>
                       {item}
                     </div>
                   ))
@@ -758,9 +742,7 @@ function InvestigationModal({
   )
 }
 
-/* -------------------------------------------------------
-   AUTHENTICATED DASHBOARD
-------------------------------------------------------- */
+/* AUTHENTICATED DASHBOARD */
 
 function Dashboard({
   user,
@@ -789,9 +771,7 @@ function Dashboard({
       setTotal(result.total)
       setOffset(nextOffset)
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Unable to load transactions',
-      )
+      setError(e instanceof Error ? e.message : 'Unable to load transactions')
     } finally {
       setLoading(false)
     }
@@ -804,20 +784,14 @@ function Dashboard({
   }, [])
 
   const filtered = useMemo(
-    () =>
-      transactions.filter(tx =>
-        String(tx.transaction_id).includes(search.trim()),
-      ),
+    () => transactions.filter(tx => String(tx.transaction_id).includes(search.trim())),
     [transactions, search],
   )
 
-  const flagged = transactions.filter(
-    tx => tx.prediction === 'fraud',
-  ).length
+  const flagged = transactions.filter(tx => tx.prediction === 'fraud').length
 
   const averageRisk = transactions.length
-    ? transactions.reduce((sum, tx) => sum + tx.risk_score, 0) /
-      transactions.length
+    ? transactions.reduce((sum, tx) => sum + tx.risk_score, 0) / transactions.length
     : 0
 
   const openPage = (next: Page) => {
@@ -828,18 +802,14 @@ function Dashboard({
   return (
     <div className="dashboard-shell">
       <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-brand">
-          <Brand />
-        </div>
-
+        <div className="sidebar-brand"><Brand /></div>
         <p className="side-label">WORKSPACE</p>
 
         <button
           className={`side-link ${page === 'overview' ? 'active' : ''}`}
           onClick={() => openPage('overview')}
         >
-          <Gauge size={16} />
-          Overview
+          <Gauge size={16} /> Overview
           {page === 'overview' && <i className="side-active-mark" />}
         </button>
 
@@ -847,8 +817,7 @@ function Dashboard({
           className={`side-link ${page === 'transactions' ? 'active' : ''}`}
           onClick={() => openPage('transactions')}
         >
-          <Database size={16} />
-          Transaction explorer
+          <Database size={16} /> Transaction explorer
           {page === 'transactions' && <i className="side-active-mark" />}
         </button>
 
@@ -856,18 +825,14 @@ function Dashboard({
           className={`side-link ${page === 'investigations' ? 'active' : ''}`}
           onClick={() => openPage('investigations')}
         >
-          <ShieldAlert size={16} />
-          Investigations
+          <ShieldAlert size={16} /> Investigations
           {page === 'investigations' && <i className="side-active-mark" />}
         </button>
 
         <div className="sidebar-bottom">
           <div className="sidebar-status">
             <span className="status-dot" />
-            <span>
-              <strong>API SERVICE</strong>
-              <small>Local prototype</small>
-            </span>
+            <span><strong>API SERVICE</strong><small>Local prototype</small></span>
           </div>
 
           <div className="sidebar-user">
@@ -890,13 +855,7 @@ function Dashboard({
 
       <main className="dashboard-main">
         <header className="dashboard-topbar">
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
               className="icon-button mobile-menu"
               onClick={() => setSidebarOpen(value => !value)}
@@ -904,7 +863,6 @@ function Dashboard({
             >
               <Menu size={16} />
             </button>
-
             <div className="breadcrumb">
               FraudLens <ChevronRight size={12} />{' '}
               <strong>
@@ -918,9 +876,7 @@ function Dashboard({
           </div>
 
           <div className="topbar-right">
-            <span className="replay-badge">
-              <span className="status-dot" /> HISTORICAL REPLAY
-            </span>
+            <span className="replay-badge"><span className="status-dot" /> HISTORICAL REPLAY</span>
             <span className="top-avatar">{initials(user.email)}</span>
           </div>
         </header>
@@ -932,7 +888,6 @@ function Dashboard({
                 <span className="eyebrow-line" />
                 RISK INTELLIGENCE / WORKSPACE
               </div>
-
               <h1>
                 {page === 'overview'
                   ? 'Good to have you back.'
@@ -940,7 +895,6 @@ function Dashboard({
                     ? 'Transaction explorer.'
                     : 'Investigation queue.'}
               </h1>
-
               <p>
                 {page === 'overview'
                   ? 'Review model-scored transactions and inspect the signals that need attention.'
@@ -950,14 +904,8 @@ function Dashboard({
               </p>
             </div>
 
-            <button
-              className="button button-outline"
-              onClick={() => void load(offset)}
-            >
-              <RefreshCw
-                size={14}
-                className={loading ? 'spin' : ''}
-              />
+            <button className="button button-outline" onClick={() => void load(offset)}>
+              <RefreshCw size={14} className={loading ? 'spin' : ''} />
               Refresh data
             </button>
           </div>
@@ -975,15 +923,11 @@ function Dashboard({
               <article className="dash-stat">
                 <div className="dash-stat-head">
                   DATASET TRANSACTIONS
-                  <span className="stat-symbol">
-                    <Database size={15} />
-                  </span>
+                  <span className="stat-symbol"><Database size={15} /></span>
                 </div>
                 <strong>{total.toLocaleString()}</strong>
                 <div className="dash-stat-foot">
-                  <span className="stat-foot-icon">
-                    <BadgeCheck size={12} />
-                  </span>
+                  <span className="stat-foot-icon"><BadgeCheck size={12} /></span>
                   Loaded historical dataset size
                 </div>
                 <Database className="stat-watermark" size={70} />
@@ -992,23 +936,13 @@ function Dashboard({
               <article className="dash-stat">
                 <div className="dash-stat-head">
                   FLAGGED ON THIS PAGE
-                  <span className="stat-symbol alert-symbol">
-                    <ShieldAlert size={15} />
-                  </span>
+                  <span className="stat-symbol alert-symbol"><ShieldAlert size={15} /></span>
                 </div>
-                <strong>
-                  {flagged}
-                  <small> / {transactions.length}</small>
-                </strong>
-                <div className="dash-stat-foot">
-                  <span className="stat-foot-alert">THRESHOLD ≥ 50%</span>
-                </div>
+                <strong>{flagged}<small> / {transactions.length}</small></strong>
+                <div className="dash-stat-foot"><span className="stat-foot-alert">THRESHOLD ≥ 50%</span></div>
                 <div className="stat-ring">
                   <span>
-                    {transactions.length
-                      ? Math.round((flagged / transactions.length) * 100)
-                      : 0}
-                    %
+                    {transactions.length ? Math.round((flagged / transactions.length) * 100) : 0}%
                   </span>
                 </div>
               </article>
@@ -1016,17 +950,10 @@ function Dashboard({
               <article className="dash-stat">
                 <div className="dash-stat-head">
                   MEAN PAGE RISK
-                  <span className="stat-symbol">
-                    <Activity size={15} />
-                  </span>
+                  <span className="stat-symbol"><Activity size={15} /></span>
                 </div>
-                <strong>
-                  {averageRisk.toFixed(2)}
-                  <small>%</small>
-                </strong>
-                <div className="dash-stat-foot">
-                  Mean model score of loaded rows
-                </div>
+                <strong>{averageRisk.toFixed(2)}<small>%</small></strong>
+                <div className="dash-stat-foot">Mean model score of loaded rows</div>
                 <div className="mini-bars">
                   {[13, 22, 17, 27, 19, 29, 23, 16, 26].map((height, i) => (
                     <i key={i} style={{ height }} />
@@ -1037,17 +964,11 @@ function Dashboard({
               <article className="dash-stat">
                 <div className="dash-stat-head">
                   MODEL VALIDATION
-                  <span className="stat-symbol">
-                    <Zap size={15} />
-                  </span>
+                  <span className="stat-symbol"><Zap size={15} /></span>
                 </div>
                 <strong>0.7772</strong>
-                <div className="dash-stat-foot">
-                  ROC-AUC · held-out validation
-                </div>
-                <div className="risk-track">
-                  <i style={{ width: '77.72%' }} />
-                </div>
+                <div className="dash-stat-foot">ROC-AUC · held-out validation</div>
+                <div className="risk-track"><i style={{ width: '77.72%' }} /></div>
               </article>
             </div>
           )}
@@ -1057,22 +978,13 @@ function Dashboard({
               <div>
                 <div className="eyebrow">
                   <span className="eyebrow-line" />
-                  {page === 'investigations'
-                    ? 'REVIEW QUEUE'
-                    : 'TRANSACTION DATA'}
+                  {page === 'investigations' ? 'REVIEW QUEUE' : 'TRANSACTION DATA'}
                 </div>
-
                 <h2>
-                  {page === 'investigations'
-                    ? 'Flagged transactions'
-                    : 'Recent transactions'}{' '}
-                  <span>{filtered.length}</span>
+                  {page === 'investigations' ? 'Flagged transactions' : 'Recent transactions'}{' '}
+                  <span>{filtered.filter(tx => page !== 'investigations' || tx.prediction === 'fraud').length}</span>
                 </h2>
-
-                <p>
-                  Scores are model outputs; review flags are not confirmed
-                  fraud labels.
-                </p>
+                <p>Scores are model outputs; review flags are not confirmed fraud labels.</p>
               </div>
 
               <div className="table-tools">
@@ -1099,7 +1011,6 @@ function Dashboard({
                     <th />
                   </tr>
                 </thead>
-
                 <tbody>
                   {loading && !transactions.length ? (
                     <tr>
@@ -1112,11 +1023,7 @@ function Dashboard({
                     </tr>
                   ) : (
                     filtered
-                      .filter(
-                        tx =>
-                          page !== 'investigations' ||
-                          tx.prediction === 'fraud',
-                      )
+                      .filter(tx => page !== 'investigations' || tx.prediction === 'fraud')
                       .map(tx => (
                         <tr
                           key={tx.transaction_id}
@@ -1128,41 +1035,22 @@ function Dashboard({
                               {shortId(tx.transaction_id)}
                             </span>
                           </td>
-
                           <td className="amount-cell">{money(tx.amount)}</td>
-
-                          <td>
-                            <span className="product-pill">
-                              {tx.product || '—'}
-                            </span>
-                          </td>
-
+                          <td><span className="product-pill">{tx.product || '—'}</span></td>
                           <td>
                             <div className="risk-cell">
-                              <strong
-                                className={
-                                  tx.risk_score >= 50 ? 'text-alert' : ''
-                                }
-                              >
+                              <strong className={tx.risk_score >= 50 ? 'text-alert' : ''}>
                                 {tx.risk_score.toFixed(2)}%
                               </strong>
                               <span className="risk-bar">
                                 <i
-                                  className={
-                                    tx.risk_score >= 50 ? 'bar-high' : ''
-                                  }
-                                  style={{
-                                    width: `${Math.min(tx.risk_score, 100)}%`,
-                                  }}
+                                  className={tx.risk_score >= 50 ? 'bar-high' : ''}
+                                  style={{ width: `${Math.min(tx.risk_score, 100)}%` }}
                                 />
                               </span>
                             </div>
                           </td>
-
-                          <td>
-                            <RiskChip tx={tx} />
-                          </td>
-
+                          <td><RiskChip tx={tx} /></td>
                           <td>
                             <button
                               className="row-open"
@@ -1181,23 +1069,19 @@ function Dashboard({
                 </tbody>
               </table>
 
-              {!loading && !error && filtered.length === 0 && (
-                <div className="empty-state">
-                  No matching transactions on this page.
-                </div>
+              {!loading && !error && filtered.filter(
+                tx => page !== 'investigations' || tx.prediction === 'fraud',
+              ).length === 0 && (
+                <div className="empty-state">No matching transactions on this page.</div>
               )}
             </div>
 
             <div className="table-footer">
               <span>
                 {total
-                  ? `${offset + 1}–${Math.min(
-                      offset + transactions.length,
-                      total,
-                    )} of ${total.toLocaleString()} transactions`
+                  ? `${offset + 1}–${Math.min(offset + transactions.length, total)} of ${total.toLocaleString()} transactions`
                   : 'No transactions loaded'}
               </span>
-
               <span style={{ display: 'flex', gap: 8 }}>
                 <button
                   className="icon-button"
@@ -1207,7 +1091,6 @@ function Dashboard({
                 >
                   <ChevronLeft size={14} />
                 </button>
-
                 <button
                   className="icon-button"
                   disabled={offset + 20 >= total || loading}
@@ -1233,18 +1116,13 @@ function Dashboard({
       </main>
 
       {selected !== null && (
-        <InvestigationModal
-          id={selected}
-          onClose={() => setSelected(null)}
-        />
+        <InvestigationModal id={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   )
 }
 
-/* -------------------------------------------------------
-   APPLICATION ENTRY POINT AND SESSION CHECK
-------------------------------------------------------- */
+/* APPLICATION ENTRY POINT AND SESSION CHECK */
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -1284,9 +1162,7 @@ export default function App() {
   if (checkingSession) {
     return (
       <div className="app-loading">
-        <span className="brand-mark">
-          <ShieldCheck size={20} />
-        </span>
+        <span className="brand-mark"><ShieldCheck size={20} /></span>
         <span>Loading FraudLens…</span>
       </div>
     )
