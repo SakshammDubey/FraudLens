@@ -1,0 +1,27 @@
+Fraud Investigation Reference Guide
+
+PURPOSE
+A high fraud-risk score is an indicator for further review,
+not proof that a transaction is fraudulent.
+
+TRANSACTION AMOUNT
+An unusual transaction amount may warrant investigation
+when compared with an established customer baseline.
+The amount alone is insufficient to establish fraud.
+
+TRANSACTION PATTERNS
+Repeated transactions, unusual transaction timing, or
+unexpected changes in transaction behaviour may warrant
+additional checks when reliable supporting data is available.
+
+IDENTITY AND DEVICE INFORMATION
+Device, browser, and identity-related attributes may provide
+additional context when available. Missing identity data
+must not be treated as evidence of fraud.
+
+INVESTIGATION PROCESS
+1. Review the model's predicted risk and relevant features.
+2. Compare available evidence with documented fraud patterns.
+3. Identify missing information and alternative explanations.
+4. Recommend appropriate verification steps.
+5. Do not conclude fraud without sufficient evidence.

@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BadgeCheck,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -20,10 +21,10 @@ import {
   Menu,
   RefreshCw,
   Search,
+  Send,
   Shield,
   ShieldAlert,
   ShieldCheck,
-  Sparkles,
   X,
   Zap,
 } from 'lucide-react'
@@ -42,7 +43,6 @@ import {
 import './index.css'
 
 type User = AuthUser
-
 type Page = 'overview' | 'transactions' | 'investigations'
 type AuthMode = 'login' | 'register'
 
@@ -93,7 +93,11 @@ function Orb() {
   )
 }
 
-function RiskChip({ tx }: { tx: Pick<Transaction, 'prediction' | 'risk_score'> }) {
+function RiskChip({
+  tx,
+}: {
+  tx: Pick<Transaction, 'prediction' | 'risk_score'>
+}) {
   const high = tx.prediction === 'fraud'
 
   return (
@@ -303,7 +307,6 @@ function Landing({ onAuth }: { onAuth: (mode: AuthMode) => void }) {
   )
 }
 
-/* LOGIN AND REGISTRATION */
 
 function AuthPage({
   initialMode,
@@ -347,8 +350,6 @@ function AuthPage({
           return
         }
 
-        // Some Supabase configurations allow registration without email
-        // confirmation. In that case, continue only if a session exists.
         if (!getToken()) {
           setConfirmation(
             'Your registration was received. Check your email for a confirmation link, then return here and sign in.',
@@ -498,7 +499,6 @@ function AuthPage({
           </div>
 
           <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
-
           <p className="auth-subtitle">
             {mode === 'login'
               ? 'Sign in to continue to your workspace.'
@@ -606,7 +606,7 @@ function AuthPage({
   )
 }
 
-/* TRANSACTION INVESTIGATION MODAL */
+
 
 function InvestigationModal({
   id,
@@ -617,9 +617,15 @@ function InvestigationModal({
 }) {
   const [detail, setDetail] = useState<Investigation | null>(null)
   const [error, setError] = useState('')
+  const [activeSection, setActiveSection] = useState<
+    'reasons' | 'profile' | 'quality'
+  >('reasons')
 
   useEffect(() => {
     let cancelled = false
+
+    setDetail(null)
+    setError('')
 
     fetchInvestigation(id)
       .then(value => {
@@ -627,7 +633,9 @@ function InvestigationModal({
       })
       .catch(e => {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Investigation failed')
+          setError(
+            e instanceof Error ? e.message : 'Investigation failed',
+          )
         }
       })
 
@@ -644,6 +652,95 @@ function InvestigationModal({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  const investigation = detail?.investigation
+  const contributions = investigation?.feature_contributions
+
+  const renderContribution = (
+    item: NonNullable<
+      NonNullable<Investigation['investigation']['feature_contributions']>
+    >['increases_risk'][number],
+    direction: 'up' | 'down',
+  ) => (
+    <article
+      key={item.key}
+      className="observation-row"
+      style={{
+        alignItems: 'flex-start',
+        padding: '14px 16px',
+        gap: 12,
+      }}
+    >
+      <span
+        style={{
+          flexShrink: 0,
+          color: direction === 'up' ? '#e87967' : '#9bcf8a',
+        }}
+      >
+        {direction === 'up' ? (
+          <ArrowUpRight size={16} />
+        ) : (
+          <ChevronLeft
+            size={16}
+            style={{ transform: 'rotate(-45deg)' }}
+          />
+        )}
+      </span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <strong>{item.label || item.key}</strong>
+          <strong
+            style={{
+              color: direction === 'up' ? '#e87967' : '#9bcf8a',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {item.contribution > 0 ? '+' : ''}
+            {item.contribution.toFixed(6)}
+          </strong>
+        </div>
+
+        <p style={{ margin: '5px 0 0', overflowWrap: 'anywhere' }}>
+          Feature: <code>{item.key}</code>
+          {' · '}Observed value:{' '}
+          <strong>
+            {item.value === null || item.value === undefined
+              ? 'Missing'
+              : String(item.value)}
+          </strong>
+        </p>
+
+        <p style={{ margin: '5px 0 0' }}>
+          {item.value === null || item.value === undefined
+            ? direction === 'up'
+              ? 'This missing value contributes toward a higher fraud score in this model.'
+              : 'This missing value contributes toward a lower fraud score in this model.'
+            : direction === 'up'
+              ? 'This feature value pushes the model prediction toward fraud.'
+              : 'This feature value pushes the model prediction away from fraud.'}
+        </p>
+      </div>
+    </article>
+  )
+
+  const profile = investigation?.transaction_profile ?? []
+  const profileGroups = Array.from(
+    profile.reduce((groups, field) => {
+      const category = field.category || 'Other'
+      const fields = groups.get(category) ?? []
+      fields.push(field)
+      groups.set(category, fields)
+      return groups
+    }, new Map<string, typeof profile>()),
+  )
 
   return (
     <div
@@ -662,10 +759,11 @@ function InvestigationModal({
           <div>
             <div className="eyebrow">
               <span className="eyebrow-line" />
-              CASE REVIEW
+              CASE REVIEW / EVIDENCE REPORT
             </div>
             <h2 id="investigation-title">Transaction investigation</h2>
           </div>
+
           <button
             className="icon-button"
             onClick={onClose}
@@ -677,26 +775,34 @@ function InvestigationModal({
 
         <div className="investigation-body">
           {error ? (
-            <div className="form-error">
+            <div className="form-error" role="alert">
               <CircleAlert size={15} />
               {error}
             </div>
-          ) : !detail ? (
+          ) : !detail || !investigation ? (
             <div className="empty-state">
               <LoaderCircle className="spin" size={18} />
               Loading investigation…
             </div>
           ) : (
             <>
+              {/* Risk summary */}
               <div className="investigation-score">
                 <div>
                   <span>MODEL RISK SCORE</span>
-                  <strong className={detail.risk_score >= 50 ? 'text-alert' : ''}>
+                  <strong
+                    className={
+                      detail.risk_score >= detail.threshold * 100
+                        ? 'text-alert'
+                        : ''
+                    }
+                  >
                     {detail.risk_score.toFixed(2)}
                     <small>%</small>
                   </strong>
                   <RiskChip tx={detail} />
                 </div>
+
                 <div className="score-gauge">
                   <span>{detail.risk_score.toFixed(0)}</span>
                   <small>/100</small>
@@ -704,36 +810,309 @@ function InvestigationModal({
               </div>
 
               <div className="investigation-facts">
-                <div><span>TRANSACTION ID</span><strong>{detail.transaction_id}</strong></div>
-                <div><span>AMOUNT</span><strong>{money(detail.amount)}</strong></div>
-                <div><span>PRODUCT</span><strong>{detail.product || 'Unknown'}</strong></div>
-                <div><span>DECISION THRESHOLD</span><strong>{(detail.threshold * 100).toFixed(0)}%</strong></div>
+                <div>
+                  <span>TRANSACTION ID</span>
+                  <strong>{detail.transaction_id}</strong>
+                </div>
+                <div>
+                  <span>AMOUNT</span>
+                  <strong>{money(detail.amount)}</strong>
+                </div>
+                <div>
+                  <span>PRODUCT</span>
+                  <strong>{detail.product || 'Unknown'}</strong>
+                </div>
+                <div>
+                  <span>DECISION THRESHOLD</span>
+                  <strong>{(detail.threshold * 100).toFixed(0)}%</strong>
+                </div>
               </div>
 
-              <div className="explanation-block">
-                <h3><Sparkles size={15} /> Model interpretation</h3>
-                <p>{detail.investigation.explanation}</p>
+              {/* Main reason for the flag */}
+              <section className="explanation-block">
+                <h3>
+                  <ShieldAlert size={16} />
+                  Why was this transaction flagged?
+                </h3>
+
+                <p>{investigation.explanation}</p>
+
+                <p>
+                  {detail.prediction === 'fraud'
+                    ? `The model score is ${
+                        detail.risk_score.toFixed(2)
+                      }%, at or above the ${
+                        (detail.threshold * 100).toFixed(0)
+                      }% review threshold. This is a model-generated flag, not a confirmed fraud finding.`
+                    : `The model score is ${
+                        detail.risk_score.toFixed(2)
+                      }%, below the ${
+                        (detail.threshold * 100).toFixed(0)
+                      }% review threshold. A low score does not guarantee a legitimate transaction.`}
+                </p>
+              </section>
+
+              {/* Section navigation */}
+              <div
+                className="auth-tabs"
+                role="tablist"
+                aria-label="Investigation details"
+                style={{ margin: '22px 0 16px' }}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeSection === 'reasons'}
+                  className={activeSection === 'reasons' ? 'active' : ''}
+                  onClick={() => setActiveSection('reasons')}
+                >
+                  Risk factors
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeSection === 'profile'}
+                  className={activeSection === 'profile' ? 'active' : ''}
+                  onClick={() => setActiveSection('profile')}
+                >
+                  Transaction profile
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeSection === 'quality'}
+                  className={activeSection === 'quality' ? 'active' : ''}
+                  onClick={() => setActiveSection('quality')}
+                >
+                  Data quality
+                </button>
               </div>
 
-              <div className="observation-block">
-                <h3><Layers3 size={15} /> Data observations</h3>
-                {detail.investigation.observations.length ? (
-                  detail.investigation.observations.map(item => (
-                    <div className="observation-row" key={item}>
-                      <span><CircleAlert size={12} /></span>
-                      {item}
+              {activeSection === 'reasons' && (
+                <>
+                  <section className="observation-block">
+                    <h3>
+                      <ArrowUpRight size={16} />
+                      Factors increasing risk
+                      <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
+                        {contributions?.increases_risk.length ?? 0}
+                      </span>
+                    </h3>
+
+                    {contributions?.increases_risk.length ? (
+                      contributions.increases_risk.map(item =>
+                        renderContribution(item, 'up'),
+                      )
+                    ) : (
+                      <p>
+                        No positive feature contributions were returned by
+                        the model.
+                      </p>
+                    )}
+                  </section>
+
+                  <section className="observation-block">
+                    <h3>
+                      <ArrowRight
+                        size={16}
+                        style={{ transform: 'rotate(180deg)' }}
+                      />
+                      Factors decreasing risk
+                      <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
+                        {contributions?.decreases_risk.length ?? 0}
+                      </span>
+                    </h3>
+
+                    {contributions?.decreases_risk.length ? (
+                      contributions.decreases_risk.map(item =>
+                        renderContribution(item, 'down'),
+                      )
+                    ) : (
+                      <p>
+                        No negative feature contributions were returned by
+                        the model.
+                      </p>
+                    )}
+                  </section>
+
+                  {contributions && (
+                    <section className="observation-block">
+                      <h3>
+                        <Activity size={15} /> Contribution consistency
+                      </h3>
+                      <p>
+                        Method: {contributions.method} · Unit:{' '}
+                        {contributions.unit}
+                      </p>
+                      <p>
+                        Contributions sum:{' '}
+                        {contributions.contribution_sum.toFixed(6)}
+                      </p>
+                      <p>
+                        Model calculation consistency:{' '}
+                        {contributions.consistency_check
+                          ? 'Passed'
+                          : 'Not verified'}
+                      </p>
+                    </section>
+                  )}
+
+                  <section className="observation-block">
+                    <h3>
+                      <Layers3 size={15} /> Investigation observations
+                    </h3>
+
+                    {investigation.observations.length ? (
+                      investigation.observations.map((item, index) => (
+                        <div className="observation-row" key={index}>
+                          <span><CircleAlert size={12} /></span>
+                          {item}
+                        </div>
+                      ))
+                    ) : (
+                      <p>No additional observations were returned.</p>
+                    )}
+                  </section>
+
+                  <section className="explanation-block">
+                    <h3>
+                      <BadgeCheck size={15} /> Recommended review
+                    </h3>
+                    <p>{investigation.recommendation}</p>
+                  </section>
+                </>
+              )}
+
+              {activeSection === 'profile' && (
+                <>
+                  {profileGroups.length ? (
+                    profileGroups.map(([category, fields]) => (
+                      <section
+                        className="observation-block"
+                        key={category}
+                      >
+                        <h3>
+                          <Database size={15} /> {category}
+                        </h3>
+
+                        {fields.map(field => (
+                          <div
+                            className="observation-row"
+                            key={field.key}
+                            style={{ alignItems: 'flex-start' }}
+                          >
+                            <span>
+                              {field.available ? (
+                                <BadgeCheck size={12} />
+                              ) : (
+                                <CircleAlert size={12} />
+                              )}
+                            </span>
+
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <strong>{field.label}</strong>
+                              <p style={{ margin: '4px 0 0' }}>
+                                {field.value === null
+                                  ? 'Missing'
+                                  : String(field.value)}
+                                {' · '}
+                                <code>{field.key}</code>
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </section>
+                    ))
+                  ) : (
+                    <div className="empty-state">
+                      No transaction profile fields were returned.
                     </div>
-                  ))
-                ) : (
-                  <p>No missingness observations from the selected fields.</p>
-                )}
-              </div>
+                  )}
+
+                  <p className="modal-disclaimer">
+                    IEEE-CIS contains anonymized and engineered fields.
+                    Their exact real-world meanings may not be documented.
+                    Individual values are not proof of suspicious activity.
+                  </p>
+                </>
+              )}
+
+              {activeSection === 'quality' && (
+                <>
+                  <div className="investigation-facts">
+                    <div>
+                      <span>TOTAL FIELDS</span>
+                      <strong>{investigation.data_quality.total_fields}</strong>
+                    </div>
+                    <div>
+                      <span>AVAILABLE</span>
+                      <strong>
+                        {investigation.data_quality.available_fields}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>MISSING</span>
+                      <strong>
+                        {investigation.data_quality.missing_fields}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>COMPLETENESS</span>
+                      <strong>
+                        {investigation.data_quality.completeness_percent.toFixed(1)}%
+                      </strong>
+                    </div>
+                  </div>
+
+                  <section className="observation-block">
+                    <h3>
+                      <CircleAlert size={15} /> Missing fields
+                    </h3>
+
+                    {investigation.data_quality.missing_field_labels.length ? (
+                      investigation.data_quality.missing_field_labels.map(
+                        (label, index) => (
+                          <div className="observation-row" key={index}>
+                            <span><CircleAlert size={12} /></span>
+                            {label}
+                          </div>
+                        ),
+                      )
+                    ) : (
+                      <p>
+                        No missing fields were reported by the data-quality
+                        analysis.
+                      </p>
+                    )}
+                  </section>
+
+                  <section className="observation-block">
+                    <h3>
+                      <Shield size={15} /> Model limitations
+                    </h3>
+
+                    {investigation.limitations.length ? (
+                      investigation.limitations.map((item, index) => (
+                        <div className="observation-row" key={index}>
+                          <span><CircleAlert size={12} /></span>
+                          {item}
+                        </div>
+                      ))
+                    ) : (
+                      <p>No additional limitations were returned.</p>
+                    )}
+                  </section>
+                </>
+              )}
 
               <p className="modal-disclaimer">
-                A score above the configured threshold is a review flag,
-                not proof of fraud. The baseline does not provide causal
-                feature attribution.
+                Feature contributions explain how the trained model arrived
+                at its score; they do not establish causation. Anonymized
+                dataset attributes should not be interpreted as verified
+                real-world behavior. Final decisions require human review.
               </p>
+
+              <IntelligenceAssistant id={id} />
             </>
           )}
         </div>
@@ -742,7 +1121,259 @@ function InvestigationModal({
   )
 }
 
-/* AUTHENTICATED DASHBOARD */
+type AssistantEvidence = {
+  source: string
+  chunk: number
+  text: string
+  distance: number
+}
+
+type AssistantResponse = {
+  assistant: string
+  transaction_id: number
+  question: string
+  transaction: {
+    amount: number
+    product: string
+    risk_score: number
+    prediction: string
+    threshold: number
+  }
+  answer: string
+  evidence: AssistantEvidence[]
+  evidence_count: number
+  disclaimer: string
+}
+
+function IntelligenceAssistant({ id }: { id: number }) {
+  const [question, setQuestion] = useState('')
+  const [result, setResult] = useState<AssistantResponse | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function ask(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedQuestion = question.trim()
+
+    if (trimmedQuestion.length < 3) {
+      setError('Enter a question with at least 3 characters.')
+      return
+    }
+
+    setBusy(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const token = getToken()
+
+      if (!token) {
+        throw new Error('Your session has expired. Sign in again.')
+      }
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/investigate/${id}/ask`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ question: trimmedQuestion }),
+        },
+      )
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        const detail = payload?.detail
+
+        throw new Error(
+          typeof detail === 'string'
+            ? detail
+            : `Assistant request failed (${response.status}).`,
+        )
+      }
+
+      const data = (await response.json()) as AssistantResponse
+      setResult(data)
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : 'Unable to retrieve evidence.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section
+      className="observation-block"
+      style={{ marginTop: 24 }}
+      aria-labelledby="intelligence-assistant-title"
+    >
+      <h3 id="intelligence-assistant-title">
+        <BookOpen size={16} />
+        Intelligence assistant
+        <span
+          style={{
+            marginLeft: 'auto',
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            opacity: 0.7,
+          }}
+        >
+          RAG / RETRIEVAL
+        </span>
+      </h3>
+
+      <p>
+        Ask a question about this transaction. FraudLens will retrieve
+        relevant passages from its investigation reference library.
+      </p>
+
+      <form
+        onSubmit={ask}
+        style={{
+          display: 'flex',
+          gap: 10,
+          alignItems: 'stretch',
+          marginTop: 14,
+        }}
+      >
+        <input
+          value={question}
+          onChange={event => setQuestion(event.target.value)}
+          placeholder="Why is a high risk score not proof of fraud?"
+          minLength={3}
+          maxLength={1000}
+          disabled={busy}
+          aria-label="Question for the intelligence assistant"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '12px 14px',
+            borderRadius: 9,
+            border: '1px solid rgba(255,255,255,0.14)',
+            background: 'rgba(255,255,255,0.035)',
+            color: 'inherit',
+            font: 'inherit',
+          }}
+        />
+
+        <button
+          className="button button-primary"
+          type="submit"
+          disabled={busy || question.trim().length < 3}
+          style={{ flexShrink: 0 }}
+        >
+          {busy ? (
+            <LoaderCircle size={15} className="spin" />
+          ) : (
+            <Send size={14} />
+          )}
+          {busy ? 'Searching…' : 'Ask'}
+        </button>
+      </form>
+
+      {error && (
+        <div
+          className="form-error"
+          role="alert"
+          style={{ marginTop: 14 }}
+        >
+          <CircleAlert size={15} />
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={{ marginTop: 20 }}>
+          <div className="investigation-facts">
+            <div>
+              <span>TRANSACTION</span>
+              <strong>{result.transaction_id}</strong>
+            </div>
+            <div>
+              <span>MODEL RISK</span>
+              <strong>{result.transaction.risk_score.toFixed(2)}%</strong>
+            </div>
+            <div>
+              <span>PREDICTION</span>
+              <strong>{result.transaction.prediction.toUpperCase()}</strong>
+            </div>
+            <div>
+              <span>PASSAGES FOUND</span>
+              <strong>{result.evidence_count}</strong>
+            </div>
+          </div>
+
+          <section className="explanation-block" style={{ marginTop: 16 }}>
+            <h3>Retrieval status</h3>
+            <p>{result.answer}</p>
+          </section>
+
+          <div style={{ marginTop: 18 }}>
+            <h3 style={{ fontSize: 14, marginBottom: 12 }}>
+              Retrieved reference evidence
+            </h3>
+
+            {result.evidence.length === 0 ? (
+              <p>No matching passages were found in the knowledge base.</p>
+            ) : (
+              result.evidence.map((item, index) => (
+                <article
+                  key={`${item.source}-${item.chunk}-${index}`}
+                  style={{
+                    padding: 14,
+                    marginBottom: 10,
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 10,
+                    background: 'rgba(255,255,255,0.025)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      marginBottom: 9,
+                    }}
+                  >
+                    <strong style={{ fontSize: 12, overflowWrap: 'anywhere' }}>
+                      <BookOpen
+                        size={13}
+                        style={{
+                          display: 'inline',
+                          verticalAlign: 'middle',
+                          marginRight: 7,
+                        }}
+                      />
+                      {item.source}
+                    </strong>
+
+                    <span style={{ fontSize: 11, opacity: 0.7 }}>
+                      Chunk {item.chunk} · Distance {item.distance.toFixed(4)}
+                    </span>
+                  </div>
+
+                  <p style={{ lineHeight: 1.7, overflowWrap: 'anywhere' }}>
+                    {item.text}
+                  </p>
+                </article>
+              ))
+            )}
+          </div>
+
+          <p className="modal-disclaimer">
+            {result.disclaimer}
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
 
 function Dashboard({
   user,
@@ -761,30 +1392,30 @@ function Dashboard({
   const [selected, setSelected] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const load = useCallback(async (nextOffset = offset) => {
+  const load = useCallback(async (nextOffset: number) => {
     setLoading(true)
     setError('')
 
     try {
       const result = await fetchTransactions(20, nextOffset)
-      setTransactions(result.transactions)
-      setTotal(result.total)
+      setTransactions(result.transactions ?? [])
+      setTotal(result.total ?? 0)
       setOffset(nextOffset)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unable to load transactions')
     } finally {
       setLoading(false)
     }
-  }, [offset])
+  }, [])
 
   useEffect(() => {
     void load(0)
-    // Initial data load.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const filtered = useMemo(
-    () => transactions.filter(tx => String(tx.transaction_id).includes(search.trim())),
+    () => transactions.filter(tx =>
+      String(tx.transaction_id).includes(search.trim()),
+    ),
     [transactions, search],
   )
 
@@ -1122,19 +1753,114 @@ function Dashboard({
   )
 }
 
-/* APPLICATION ENTRY POINT AND SESSION CHECK */
+
+function getSupabaseCallbackNotice(): {
+  notice: { kind: 'success' | 'error'; message: string } | null
+  callbackDetected: boolean
+} {
+  const url = new URL(window.location.href)
+  const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
+  const hashParams = new URLSearchParams(hash)
+  const queryParams = url.searchParams
+
+  const type = hashParams.get('type') ?? queryParams.get('type')
+  const accessToken = hashParams.get('access_token')
+  const refreshToken = hashParams.get('refresh_token')
+  const errorCode =
+    hashParams.get('error_code') ?? queryParams.get('error_code')
+  const errorDescription =
+    hashParams.get('error_description') ??
+    queryParams.get('error_description') ??
+    hashParams.get('error') ??
+    queryParams.get('error')
+
+  const callbackDetected = Boolean(
+    type || accessToken || refreshToken || errorCode || errorDescription,
+  )
+
+  if (!callbackDetected) {
+    return { notice: null, callbackDetected: false }
+  }
+
+  window.history.replaceState(
+    window.history.state,
+    document.title,
+    url.pathname,
+  )
+
+  if (errorCode || errorDescription) {
+    return {
+      callbackDetected: true,
+      notice: {
+        kind: 'error',
+        message:
+          errorDescription ??
+          `Supabase confirmation failed (${errorCode}). Try signing in again.`,
+      },
+    }
+  }
+
+  if (type === 'signup' && accessToken) {
+    return {
+      callbackDetected: true,
+      notice: {
+        kind: 'success',
+        message:
+          'Supabase returned a signup confirmation session. Your email appears to be confirmed. Sign in with your email and password to access FraudLens.',
+      },
+    }
+  }
+
+  if (type === 'signup' || type === 'email') {
+    return {
+      callbackDetected: true,
+      notice: {
+        kind: 'error',
+        message:
+          'The confirmation redirect did not contain the expected session token. Try signing in; if that fails, check your Supabase confirmation settings.',
+      },
+    }
+  }
+
+  return {
+    callbackDetected: true,
+    notice: {
+      kind: 'success',
+      message:
+        'Supabase returned an authentication redirect. Sign in to FraudLens to establish your workspace session.',
+    },
+  }
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [authMode, setAuthMode] = useState<AuthMode | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
+  const [confirmationNotice, setConfirmationNotice] = useState<{
+    kind: 'success' | 'error'
+    message: string
+  } | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
+    const { notice, callbackDetected } = getSupabaseCallbackNotice()
+
+    if (callbackDetected) {
+      setConfirmationNotice(notice)
+      setAuthMode('login')
+      setCheckingSession(false)
+
+      return () => {
+        cancelled = true
+      }
+    }
+
     if (!getToken()) {
       setCheckingSession(false)
-      return
+      return () => {
+        cancelled = true
+      }
     }
 
     currentUser()
@@ -1157,12 +1883,15 @@ export default function App() {
     clearToken()
     setUser(null)
     setAuthMode(null)
+    setConfirmationNotice(null)
   }
 
   if (checkingSession) {
     return (
       <div className="app-loading">
-        <span className="brand-mark"><ShieldCheck size={20} /></span>
+        <span className="brand-mark">
+          <ShieldCheck size={20} />
+        </span>
         <span>Loading FraudLens…</span>
       </div>
     )
@@ -1174,13 +1903,70 @@ export default function App() {
 
   if (authMode) {
     return (
-      <AuthPage
-        initialMode={authMode}
-        onSuccess={setUser}
-        onBack={() => setAuthMode(null)}
-      />
+      <>
+        {confirmationNotice && (
+          <div
+            role={confirmationNotice.kind === 'error' ? 'alert' : 'status'}
+            style={{
+              position: 'fixed',
+              top: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10000,
+              width: 'min(680px, calc(100% - 32px))',
+              padding: '14px 18px',
+              borderRadius: 12,
+              background:
+                confirmationNotice.kind === 'error' ? '#351b1b' : '#183126',
+              color: '#f4f5f7',
+              border:
+                confirmationNotice.kind === 'error'
+                  ? '1px solid #8f4545'
+                  : '1px solid #39775a',
+              boxShadow: '0 12px 40px rgba(0,0,0,.25)',
+              fontSize: 14,
+              lineHeight: 1.55,
+            }}
+          >
+            <strong style={{ display: 'block', marginBottom: 4 }}>
+              {confirmationNotice.kind === 'error'
+                ? 'Confirmation issue'
+                : 'Email confirmation redirect received'}
+            </strong>
+            {confirmationNotice.message}
+            <button
+              type="button"
+              onClick={() => setConfirmationNotice(null)}
+              aria-label="Dismiss confirmation message"
+              style={{
+                float: 'right',
+                marginLeft: 12,
+                border: 0,
+                background: 'transparent',
+                color: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+
+        <AuthPage
+          initialMode={authMode}
+          onSuccess={setUser}
+          onBack={() => {
+            setAuthMode(null)
+            setConfirmationNotice(null)
+          }}
+        />
+      </>
     )
   }
 
   return <Landing onAuth={setAuthMode} />
 }
+
+
+
+

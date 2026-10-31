@@ -2,6 +2,10 @@
 const API_BASE_URL = 'http://127.0.0.1:8000'
 const TOKEN_KEY = 'fraudlens_access_token'
 
+/* =========================
+   Authentication utilities
+========================= */
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
 }
@@ -13,6 +17,10 @@ export function saveToken(token: string): void {
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
 }
+
+/* =========================
+   API request handler
+========================= */
 
 async function request<T>(
   path: string,
@@ -33,25 +41,64 @@ async function request<T>(
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers,
-  })
+  let response: Response
 
-  const data = await response.json().catch(() => ({}))
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers,
+    })
+  } catch {
+    throw new Error(
+      'Cannot connect to the FraudLens API. Ensure the backend is running at http://127.0.0.1:8000.',
+    )
+  }
+
+  const data: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
     if (response.status === 401 && authenticated) {
       clearToken()
     }
 
-    throw new Error(
-      data.detail || `Request failed (${response.status})`,
-    )
+    let message = `Request failed (${response.status})`
+
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'detail' in data
+    ) {
+      const detail = data.detail
+
+      if (typeof detail === 'string') {
+        message = detail
+      } else if (Array.isArray(detail)) {
+        message = detail
+          .map((item: unknown) => {
+            if (
+              typeof item === 'object' &&
+              item !== null &&
+              'msg' in item &&
+              typeof item.msg === 'string'
+            ) {
+              return item.msg
+            }
+
+            return JSON.stringify(item)
+          })
+          .join('; ')
+      }
+    }
+
+    throw new Error(message)
   }
 
   return data as T
 }
+
+/* =========================
+   Transaction types
+========================= */
 
 export interface Transaction {
   transaction_id: number
@@ -76,14 +123,65 @@ export interface TransactionsResponse {
   transactions: Transaction[]
 }
 
+/* =========================
+   Investigation types
+========================= */
+
+export interface TransactionProfileField {
+  key: string
+  label: string
+  category: string
+  value: string | number | boolean | null
+  available: boolean
+}
+
+export interface InvestigationDataQuality {
+  total_fields: number
+  available_fields: number
+  missing_fields: number
+  completeness_percent: number
+  missing_field_labels: string[]
+}
+
+export interface FeatureContribution {
+  key: string
+  label: string
+  value: string | number | boolean | null
+  contribution: number
+}
+
+export interface FeatureContributions {
+  method: string
+  unit: string
+  intercept: number
+  calculated_logit: number
+  probability_logit: number
+  contribution_sum: number
+  consistency_check: boolean
+  increases_risk: FeatureContribution[]
+  decreases_risk: FeatureContribution[]
+  all_contributions: FeatureContribution[]
+}
+
+export interface InvestigationDetails {
+  status: string
+  observations: string[]
+  explanation: string
+  recommendation: string
+  transaction_profile: TransactionProfileField[]
+  data_quality: InvestigationDataQuality
+  limitations: string[]
+  feature_contributions?: FeatureContributions
+}
+
 export interface Investigation extends Transaction {
   threshold: number
-  investigation: {
-    status: string
-    observations: string[]
-    explanation: string
-  }
+  investigation: InvestigationDetails
 }
+
+/* =========================
+   Authentication types
+========================= */
 
 export interface AuthUser {
   id: string
@@ -103,6 +201,10 @@ export interface RegistrationResult {
   message: string
   user: AuthUser
 }
+
+/* =========================
+   Authentication functions
+========================= */
 
 function saveSessionIfPresent(result: AuthResponse): void {
   if (result.access_token) {
@@ -146,10 +248,13 @@ export async function login(
   )
 
   if (!result.access_token) {
-    throw new Error('No active session was returned. Confirm your email and try again.')
+    throw new Error(
+      'No active session was returned. Confirm your email and try again.',
+    )
   }
 
   saveToken(result.access_token)
+
   return result.user
 }
 
@@ -163,16 +268,26 @@ export async function currentUser(): Promise<AuthUser> {
   return result.user
 }
 
-export async function fetchPublicFeed(limit = 8) {
+/* =========================
+   Public fraud feed
+========================= */
+
+export async function fetchPublicFeed(
+  limit = 8,
+): Promise<FeedResponse> {
   return request<FeedResponse>(
     `/public/feed?limit=${limit}`,
   )
 }
 
+/* =========================
+   Transaction explorer
+========================= */
+
 export async function fetchTransactions(
   limit = 20,
   offset = 0,
-) {
+): Promise<TransactionsResponse> {
   return request<TransactionsResponse>(
     `/transactions?limit=${limit}&offset=${offset}`,
     {},
@@ -180,9 +295,15 @@ export async function fetchTransactions(
   )
 }
 
-export async function fetchInvestigation(id: number) {
+/* =========================
+   Fraud investigation
+========================= */
+
+export async function fetchInvestigation(
+  id: number,
+): Promise<Investigation> {
   return request<Investigation>(
-    `/investigate/${id}`,
+    `/investigate/${encodeURIComponent(id)}`,
     {},
     true,
   )
